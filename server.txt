@@ -1,0 +1,40 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const http = require('http');
+const { Server } = require("socket.io");
+
+const app = express();
+const server = http.createServer(app);
+
+// Configure CORS options for Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Adjust in production
+    methods: ["GET", "POST"],
+  },
+});
+
+app.use(bodyParser.json());
+
+io.on('connection', (socket) => {
+  console.log('A user connected');
+
+  // Example: Emit a message immediately upon connection
+  socket.emit('trading-signal', { message: "Connected to server", timestamp: new Date() });
+
+  // No need to emit a test message every 30 seconds here, unless for testing
+});
+
+// Webhook endpoint for TradingView alerts
+app.post('/webhook', (req, res) => {
+  console.log('Received webhook:', req.body);
+
+  // Assuming the body of the POST request contains the alert information
+  // Forward the alert to all connected WebSocket clients
+  io.emit('trading-signal', req.body);
+
+  res.sendStatus(200); // Respond to TradingView that the webhook was received successfully
+});
+
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
